@@ -25,6 +25,8 @@ importPackage(Packages.com.sk89q.worldedit.blocks);
 importPackage(Packages.com.sk89q.worldedit.regions);
 importPackage(Packages.com.sk89q.worldedit.util);
 
+var globalThis = this;
+
 // for future reference
 var editsess = context.remember();
 var world = editsess.getWorld();
@@ -33,6 +35,10 @@ var origin = player.getBlockIn();
 var rand = new java.util.Random();
 var originOffsetX = 0;
 var originOffsetZ = 0;
+
+// load in the modules
+require_module("citygen/util");
+require_module("citygen/blocks");
 
 // stats
 var blocksTotal = 0;
@@ -97,6 +103,62 @@ for (var i = 1; i < argv.length; i++) {
     else if (/\?/.test(arg))
         modeCreate = createMode.HELP;
 }
+
+// This ought to keep track of what's loaded
+function require_module(module_name) {
+	return importJScript(module_name+".js", "craftscripts/modules");
+}
+
+// This will eval the string inside the current context, letting us define
+// functions and other things inside the same context/scope.
+function eval_string(string) {
+	return importJScript(string, null, null, true);
+}
+
+// This little gem is borrowed from inHaze's wonderful build script
+// It lets us bring in a javascript file from external, so we can keep
+// the code better organized.
+function importJScript(jScript, dir, globalObj, strBool) {
+	player.print("Hello World");
+	try {
+		jScript = jScript instanceof Array === true ? jScript : new Array(jScript);
+		globalObj = typeof globalObj === 'undefined'  || globalObj === null ? globalThis : globalObj;
+		dir = typeof dir === 'undefined' ? "craftscripts\\" : dir;
+	 
+		var cx = org.mozilla.javascript.Context.getCurrentContext();
+		var newScope = cx.initStandardObjects(globalObj);
+		var info = [0,0, new java.util.Date().getTime()];
+
+		if (!strBool) {                        //load javascript source from external file(s)
+			for (var inc in jScript) {
+				var file = context.getSafeFile(dir, jScript[inc]);
+				if(!file.exists()){
+					player.print("\u00A7cError: \u00A7fUnable to locate import file \u00A76" + file);
+					continue;
+				}
+				var fileSize = file.length();                     
+				var buffer = new java.io.FileReader(file);
+				cx.evaluateReader(newScope, buffer, "YourScriptIdentifier" + file.getName(), 1, null);
+				buffer.close();
+				info[0]++;
+				info[1]+= fileSize;
+			}
+		}
+		else {                                //load javascript source from internal string(s)
+			for (var inc in jScript) {
+				cx.evaluateString(newScope, jScript[inc], "YourScriptIdentifier", 1, null);
+				info[0]++;
+				info[1]+= String(jScript[inc]).length;
+			}     
+		}
+		info[2] = (new java.util.Date().getTime() - info[2]);
+		return info;
+	}
+	catch(e) {
+		if (e.javaException) player.print("\u00A7cJava Error: \u00A76{ \u00A7f" + e.javaException + " \u00A76}");
+		if (e.rhinoException) player.print("\u00A7cRhino Error: \u00A76{ \u00A7f" + e.rhinoException + " \u00A76}");
+	}
+};
 
 //var config = context.getConfiguration;
 //context.print(config);
@@ -346,18 +408,6 @@ else {
 // all the supporting bits
 ////////////////////////////////////////////////////
 
-function EncodeBlock(type, data) {
-    //context.print(type + " " + data);
-    return (data << 8) | type;
-}
-
-function DecodeID(block) {
-    return block & 0xFF;
-}
-
-function DecodeData(block) {
-    return block >> 8;
-}
 
 function InitializeBlocks() {
     //context.print(arrayWidth + " " + arrayHeight + " " + arrayDepth);
