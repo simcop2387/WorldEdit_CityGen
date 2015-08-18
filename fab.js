@@ -39,14 +39,14 @@ var originOffsetZ = 0;
 // load in the modules
 require_module("citygen/util");
 require_module("citygen/blocks");
+require_module("citygen/help");
+require_module("citygen/cells");
+
 
 // stats
 var blocksTotal = 0;
 var blocksSet = 0;
 
-// what do you want to create
-var helpString = "[HIGHRISE | MIDRISE | LOWRISE | TOWN | PARK | DIRTLOT | PARKINGLOT | JUSTSTREETS | FARM | FARMHOUSE | HOUSES] [HELP] [RANDOM] [FIRSTTIME] [NOUNDO]"
-context.checkArgs(0, -1, helpString);
 var createMode = { "HIGHRISE": 0, "MIDRISE": 1, "LOWRISE": 2, "TOWN": 3,
     "PARK": 4, "DIRTLOT": 5, "PARKINGLOT": 6, "JUSTSTREETS": 7,
     "FARM": 8, "FARMHOUSE": 9, "HOUSES": 10, "HELP": -1
@@ -119,7 +119,6 @@ function eval_string(string) {
 // It lets us bring in a javascript file from external, so we can keep
 // the code better organized.
 function importJScript(jScript, dir, globalObj, strBool) {
-	player.print("Hello World");
 	try {
 		jScript = jScript instanceof Array === true ? jScript : new Array(jScript);
 		globalObj = typeof globalObj === 'undefined'  || globalObj === null ? globalThis : globalObj;
@@ -200,7 +199,7 @@ if (!FindOriginOffset()) {
 
 // show help
 if (modeCreate == createMode.HELP)
-    context.print("USAGE: " + argv[0] + " " + helpString);
+  doHelp();
 
 // check the timeout
 //else if (context.getConfiguration.scriptTimeout < 10000)
@@ -408,7 +407,6 @@ else {
 // all the supporting bits
 ////////////////////////////////////////////////////
 
-
 function InitializeBlocks() {
     //context.print(arrayWidth + " " + arrayHeight + " " + arrayDepth);
     context.print("Initializing");
@@ -553,15 +551,6 @@ function FillCellLayer(blockID, blockX, blockZ, atY, cellW, cellL) {
 function FillStrataLayer(blockID, at) {
     FillAtLayer(blockID, 0, 0, at, arrayWidth, arrayDepth);
 }
-
-////////////////////////////////////////////////////
-// random instances of random
-////////////////////////////////////////////////////
-
-function OneInTwoChance() { return rand.nextInt(2) == 0 }
-function OneInThreeChance() { return rand.nextInt(3) == 0 }
-function OneInFourChance() { return rand.nextInt(4) == 0 }
-function OneInNChance(N) { return rand.nextInt(N) == 0 }
 
 ////////////////////////////////////////////////////
 // fix up logic for blocks
@@ -713,7 +702,7 @@ function FinalizeColumns() {
             }
         }
 }
-2
+
 ////////////////////////////////////////////////////
 // specific city block construction
 ////////////////////////////////////////////////////
@@ -878,128 +867,6 @@ function AddPlumbingLevel() {
             arr[i] = tempj;
             arr[j] = tempi;
         }
-    }
-}
-
-function DrawParkCell(blockX, blockZ, cellX, cellZ, cellW, cellL) {
-    var cellWidth = cellW * squareBlocks;
-    var cellLength = cellL * squareBlocks;
-
-    // reservoir's walls
-    FillCellLayer(BlockID.SANDSTONE, blockX, blockZ, 0, cellW, cellL);
-    AddWalls(BlockID.SANDSTONE, blockX, 1, blockZ,
-                                blockX + cellWidth - 1, streetLevel - 1, blockZ + cellLength - 1);
-
-    // fill up reservoir with water
-    FillCube(BlockID.AIR, blockX + 1, 1, blockZ + 1,
-                          blockX + cellWidth - 2, 3, blockZ + cellLength - 2);
-    FillCube(BlockID.WATER, blockX + 1, 1, blockZ + 1,
-                            blockX + cellWidth - 2, rand.nextInt(3) + 2, blockZ + cellLength - 2);
-
-    // pillars to hold things up
-    for (var x = cornerWidth; x < cellWidth; x = x + cornerWidth)
-        for (var z = cornerWidth; z < cellLength; z = z + cornerWidth)
-            for (var y = 1; y < streetLevel; y++) {
-
-                // every other column has a lit base
-                if (y == 1 && ((x % 2 == 0 && z % 2 == 1) ||
-                               (x % 2 == 1 && z % 2 == 0)))
-                    blocks[blockX + x][y][blockZ + z] = BlockID.LIGHTSTONE;
-                else
-                    blocks[blockX + x][y][blockZ + z] = BlockID.SANDSTONE;
-            }
-
-    // cap it off
-    FillCellLayer(BlockID.SANDSTONE, blockX, blockZ, streetLevel, cellW, cellL);
-
-    // add some grass
-    FillCellLayer(BlockID.GRASS, blockX, blockZ, streetLevel + 1, cellW, cellL);
-
-    // steps up to access point
-    blocks[blockX + 7][streetLevel - 6][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 6][streetLevel - 5][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 5][streetLevel - 4][blockZ + 1] = BlockID.SANDSTONE;
-
-    // platform for access point
-    blocks[blockX + 4][streetLevel - 3][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 3][streetLevel - 3][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 2][streetLevel - 3][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 1][streetLevel - 3][blockZ + 1] = BlockID.SANDSTONE;
-
-    // backfill the wall behind the ladders
-    blocks[blockX + 2][streetLevel - 2][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 1][streetLevel - 2][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 2][streetLevel - 1][blockZ + 1] = BlockID.SANDSTONE;
-    blocks[blockX + 1][streetLevel - 1][blockZ + 1] = BlockID.SANDSTONE;
-
-    // and now the ladders and trapdoor
-    SetLateBlock(blockX + 3, streetLevel + 1, blockZ + 1, ExtendedID.SOUTHWARD_LADDER);
-    SetLateBlock(blockX + 3, streetLevel, blockZ + 1, ExtendedID.SOUTHWARD_LADDER);
-    SetLateBlock(blockX + 3, streetLevel - 1, blockZ + 1, ExtendedID.SOUTHWARD_LADDER);
-    SetLateBlock(blockX + 3, streetLevel - 2, blockZ + 1, ExtendedID.SOUTHWARD_LADDER);
-    SetLateBlock(blockX + 3, streetLevel + 2, blockZ + 1, ExtendedID.WESTFACING_TRAP_DOOR);
-
-    // add some fencing
-    var fenceHole = 3;
-    for (var x = 0; x < cellWidth; x++) {
-
-        // simple columns
-        if (x == fenceHole || x == cellWidth - fenceHole - 1) {
-            blocks[blockX + x][streetLevel + 2][blockZ] = BlockID.SAND;
-            blocks[blockX + x][streetLevel + 2][blockZ + cellLength - 1] = BlockID.SAND;
-            blocks[blockX + x][streetLevel + 3][blockZ] = BlockID.SANDSTONE;
-            blocks[blockX + x][streetLevel + 3][blockZ + cellLength - 1] = BlockID.SANDSTONE;
-            blocks[blockX + x][streetLevel + 4][blockZ] = ExtendedID.SANDSTONE_STEP;
-            blocks[blockX + x][streetLevel + 4][blockZ + cellLength - 1] = ExtendedID.SANDSTONE_STEP;
-
-            // fence itself
-        } else if (x > fenceHole && x < cellWidth - fenceHole) {
-            blocks[blockX + x][streetLevel + 2][blockZ] = BlockID.FENCE;
-            blocks[blockX + x][streetLevel + 2][blockZ + cellLength - 1] = BlockID.FENCE;
-        }
-    }
-
-    // another fence along the other axis
-    for (var z = 0; z < cellLength; z++) {
-        if (z == fenceHole || z == cellLength - fenceHole - 1) {
-            blocks[blockX][streetLevel + 2][blockZ + z] = BlockID.SAND;
-            blocks[blockX + cellWidth - 1][streetLevel + 2][blockZ + z] = BlockID.SAND;
-            blocks[blockX][streetLevel + 3][blockZ + z] = BlockID.SANDSTONE;
-            blocks[blockX + cellWidth - 1][streetLevel + 3][blockZ + z] = BlockID.SANDSTONE;
-            blocks[blockX][streetLevel + 4][blockZ + z] = ExtendedID.SANDSTONE_STEP;
-            blocks[blockX + cellWidth - 1][streetLevel + 4][blockZ + z] = ExtendedID.SANDSTONE_STEP;
-        } else if (z > fenceHole && z < cellLength - fenceHole) {
-            blocks[blockX][streetLevel + 2][blockZ + z] = BlockID.FENCE;
-            blocks[blockX + cellWidth - 1][streetLevel + 2][blockZ + z] = BlockID.FENCE;
-        }
-    }
-
-    // little park, give it a big tree
-    if (cellW == 1 && cellL == 1)
-        SetLateTree(blockX + Math.floor(cellWidth / 2),
-                    streetLevel + 1,
-                    blockZ + Math.floor(cellLength / 2), true);
-    else {
-
-        // where is the center?
-        var fountainDiameter = 5;
-        var fountainX = blockX + Math.floor((cellWidth - fountainDiameter) / 2);
-        var fountainZ = blockZ + Math.floor((cellLength - fountainDiameter) / 2);
-
-        // add a fountain
-        FillAtLayer(BlockID.GLASS, fountainX + 1, fountainZ + 1, streetLevel, fountainDiameter - 2, fountainDiameter - 2);
-        AddWalls(BlockID.STONE, fountainX, streetLevel + 1, fountainZ,
-                            fountainX + fountainDiameter - 1, streetLevel + 2, fountainZ + fountainDiameter - 1);
-        FillAtLayer(BlockID.WATER, fountainX + 1, fountainZ + 1, streetLevel + 1, fountainDiameter - 2, fountainDiameter - 2);
-
-        blocks[fountainX + 2][streetLevel + 1][fountainZ + 2] = BlockID.LIGHTSTONE;
-        blocks[fountainX + 2][streetLevel + 2][fountainZ + 2] = BlockID.GLASS;
-        blocks[fountainX + 2][streetLevel + 3][fountainZ + 2] = BlockID.GLASS;
-        blocks[fountainX + 2][streetLevel + 4][fountainZ + 2] = BlockID.GLASS;
-        blocks[fountainX + 2][streetLevel + 5][fountainZ + 2] = BlockID.WATER;
-
-        // add some trees
-        SetLateForest(blockX, blockZ, cellWidth, cellLength);
     }
 }
 
@@ -1984,353 +1851,6 @@ function AddFarmAndHousesLot() {
             }
         }
     }
-
-    //======================================================
-    function DrawHouseCell(blockX, blockZ, cellX, cellZ, blockW, blockL) {
-        var blockY = streetLevel + 1;
-
-        // ground please
-        FillCube(BlockID.GRASS, blockX, blockY, blockZ, blockX + blockW - 1, blockY, blockZ + blockL - 1);
-
-        // pick a color
-        var wallID = EncodeBlock(BlockID.CLOTH, rand.nextInt(16));
-        var ceilingID = BlockID.WOOD;
-        var floorID = BlockID.CLOTH;
-
-        // place the rooms
-        PlaceRoom(ceilingID, wallID, floorID, blockX, blockY, blockZ, 0, 0, 1, 1, cellX, cellZ);
-        PlaceRoom(ceilingID, wallID, floorID, blockX, blockY, blockZ, 0, 1, 1, 1, cellX, cellZ);
-        PlaceRoom(ceilingID, wallID, floorID, blockX, blockY, blockZ, 1, 0, 1, 1, cellX, cellZ);
-        PlaceRoom(ceilingID, wallID, floorID, blockX, blockY, blockZ, 1, 1, 1, 1, cellX, cellZ);
-
-        // interior walkways
-        PlaceWalkways(blockX, blockY, blockZ, 3, 0);
-        PlaceWalkways(blockX, blockY, blockZ, 0, 3);
-
-        // extrude roof
-        for (var y = 1; y < floorHeight; y++)
-            for (var x = 0; x < blockW; x++)
-                for (var z = 0; z < blockL; z++)
-                    if (blocks[blockX + x + 1][blockY + floorHeight + y - 1][blockZ + z] != BlockID.AIR &&
-                        blocks[blockX + x - 1][blockY + floorHeight + y - 1][blockZ + z] != BlockID.AIR &&
-                        blocks[blockX + x][blockY + floorHeight + y - 1][blockZ + z + 1] != BlockID.AIR &&
-                        blocks[blockX + x][blockY + floorHeight + y - 1][blockZ + z - 1] != BlockID.AIR)
-                        blocks[blockX + x][blockY + floorHeight + y][blockZ + z] = ceilingID;
-
-        // carve out the attic
-        for (var y = 1; y < floorHeight; y++)
-            for (var x = 0; x < blockW; x++)
-                for (var z = 0; z < blockL; z++)
-                    if (blocks[blockX + x][blockY + floorHeight + y + 1][blockZ + z] != BlockID.AIR)
-                        blocks[blockX + x][blockY + floorHeight + y][blockZ + z] = BlockID.AIR;
-    }
-
-    function PlaceWalkways(blockX, blockY, blockZ, offsetX, offsetZ) {
-        var atX = blockX + 10;
-        var atZ = blockZ + 10;
-
-        blocks[atX + offsetX][blockY + 1][atZ + offsetZ] = BlockID.AIR;
-        blocks[atX + offsetX][blockY + 2][atZ + offsetZ] = BlockID.AIR;
-
-        blocks[atX - offsetX][blockY + 1][atZ - offsetZ] = BlockID.AIR;
-        blocks[atX - offsetX][blockY + 2][atZ - offsetZ] = BlockID.AIR;
-    }
-
-    function PlaceRoom(ceilingID, wallID, floorID, blockX, blockY, blockZ, roomX, roomZ, roomW, roomL, cellX, cellZ) {
-        var blockW = roomW * (6 + rand.nextInt(3));
-        var blockL = roomL * (6 + rand.nextInt(3));
-        var atX = blockX + 11 + (roomX == 0 ? -blockW : -1);
-        var atZ = blockZ + 11 + (roomZ == 0 ? -blockL : -1);
-        var windowOffset = 1;
-
-        // room itself
-        AddBox(ceilingID, wallID, floorID, atX, blockY, atZ, atX + blockW - 1, blockY + floorHeight, atZ + blockL - 1);
-
-        // exterior windows
-        RandomizeOffset();
-        if (roomX == 0) {
-            if (roomZ == 0) {
-                blocks[atX][blockY + 1][atZ + 1] = BlockID.AIR;
-                blocks[atX][blockY + 2][atZ + 1] = BlockID.AIR;
-                SetLateBlock(atX, blockY + 1, atZ + 1, ExtendedID.NORTHFACING_WOODEN_DOOR);
-
-                windowOffset = 3;
-            }
-
-            blocks[atX][blockY + 2][atZ + windowOffset] = BlockID.GLASS;
-            blocks[atX][blockY + 3][atZ + windowOffset] = BlockID.GLASS;
-            blocks[atX][blockY + 2][atZ + windowOffset + 1] = BlockID.GLASS;
-            blocks[atX][blockY + 3][atZ + windowOffset + 1] = BlockID.GLASS;
-        } else {
-            if (roomZ == 1) {
-                blocks[atX + blockW - 1][blockY + 1][atZ + 1] = BlockID.AIR;
-                blocks[atX + blockW - 1][blockY + 2][atZ + 1] = BlockID.AIR;
-                SetLateBlock(atX + blockW - 1, blockY + 1, atZ + 1, ExtendedID.SOUTHFACING_WOODEN_DOOR);
-
-                windowOffset = 3;
-            }
-
-            blocks[atX + blockW - 1][blockY + 2][atZ + windowOffset] = BlockID.GLASS;
-            blocks[atX + blockW - 1][blockY + 3][atZ + windowOffset] = BlockID.GLASS;
-            blocks[atX + blockW - 1][blockY + 3][atZ + windowOffset + 1] = BlockID.GLASS;
-            blocks[atX + blockW - 1][blockY + 2][atZ + windowOffset + 1] = BlockID.GLASS;
-        }
-
-        RandomizeOffset();
-        if (roomZ == 0) {
-            blocks[atX + windowOffset][blockY + 2][atZ] = BlockID.GLASS;
-            blocks[atX + windowOffset][blockY + 3][atZ] = BlockID.GLASS;
-            blocks[atX + windowOffset + 1][blockY + 2][atZ] = BlockID.GLASS;
-            blocks[atX + windowOffset + 1][blockY + 3][atZ] = BlockID.GLASS;
-        } else {
-            blocks[atX + windowOffset][blockY + 2][atZ + blockL - 1] = BlockID.GLASS;
-            blocks[atX + windowOffset][blockY + 3][atZ + blockL - 1] = BlockID.GLASS;
-            blocks[atX + windowOffset + 1][blockY + 2][atZ + blockL - 1] = BlockID.GLASS;
-            blocks[atX + windowOffset + 1][blockY + 3][atZ + blockL - 1] = BlockID.GLASS;
-        }
-
-        function RandomizeOffset() {
-            windowOffset = 1 + rand.nextInt(3);
-        }
-    }
-
-    function AddBox(ceilingID, wallID, floorID, minX, minY, minZ, maxX, maxY, maxZ) {
-        for (var x = minX; x <= maxX; x++)
-            for (var y = minY; y <= maxY; y++)
-                for (var z = minZ; z <= maxZ; z++)
-                    if (y == maxY)
-                        blocks[x][y][z] = ceilingID
-                    else if (x == minX || x == maxX || z == minZ || z == maxZ)
-                        blocks[x][y][z] = wallID
-                    else if (y == minY)
-                        blocks[x][y][z] = floorID;
-    }
-
-    function DrawFarmCell(blockX, blockZ, cellX, cellZ, blockW, blockL) {
-        var blockY = streetLevel + 1;
-        var bedType = rand.nextInt(22);
-        var nsOrient = OneInTwoChance();
-
-        for (var x = 0; x < blockW; x++)
-            for (var z = 0; z < blockL; z++)
-                if (x == 0 || z == 0 || x == blockW - 1 || z == blockL - 1)
-                    blocks[x + blockX][blockY][z + blockZ] = BlockID.SOIL
-                else
-                    switch (bedType) {
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 4:
-                    case 5:
-                    case 6:
-                        if (nsOrient) {
-                            if (z % 4 > 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.CROPS, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 4 > 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.CROPS, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                    case 7:
-                    case 8: // wheat
-                        if (nsOrient) {
-                            if (z % 2 == 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.CROPS, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 2 == 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.CROPS, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                    case 9:
-                    case 10: // reeds
-                        if (nsOrient) {
-                            if (z % 2 == 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                SetLateBlock(x + blockX, blockY + 2, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                if (OneInTwoChance()) {
-                                    SetLateBlock(x + blockX, blockY + 3, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                    if (OneInTwoChance()) {
-                                        SetLateBlock(x + blockX, blockY + 4, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                    }
-                                }
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 2 == 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                SetLateBlock(x + blockX, blockY + 2, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                if (OneInTwoChance()) {
-                                    SetLateBlock(x + blockX, blockY + 3, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                    if (OneInTwoChance()) {
-                                        SetLateBlock(x + blockX, blockY + 4, z + blockZ, EncodeBlock(BlockID.REED, 15));
-                                    }
-                                }
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                    case 11: // cactus
-                        blocks[x + blockX][blockY][z + blockZ] = BlockID.SAND;
-                        if (x % 2 == 0 && z % 2 == 1) {
-                            SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(BlockID.CACTUS, 15));
-                            if (OneInTwoChance()) {
-                                SetLateBlock(x + blockX, blockY + 2, z + blockZ, EncodeBlock(BlockID.CACTUS, 15));
-                                if (OneInTwoChance()) {
-                                    SetLateBlock(x + blockX, blockY + 3, z + blockZ, EncodeBlock(BlockID.CACTUS, 15));
-                                }
-                            }
-                        }
-                        break;
-                    case 12: // roses
-                        blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                        SetLateBlock(x + blockX, blockY + 1, z + blockZ, BlockID.RED_FLOWER);
-                        break;
-                    case 13: // dandelion 
-                        blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                        SetLateBlock(x + blockX, blockY + 1, z + blockZ, BlockID.YELLOW_FLOWER);
-                        break;
-                    case 14: // random roses and dandelions
-                        if (nsOrient) {
-                            if (z % 2 == 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                                if (OneInTwoChance())
-                                    SetLateBlock(x + blockX, blockY + 1, z + blockZ, BlockID.RED_FLOWER)
-                                else
-                                    SetLateBlock(x + blockX, blockY + 1, z + blockZ, BlockID.YELLOW_FLOWER);
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 2 == 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                                if (OneInTwoChance())
-                                    SetLateBlock(x + blockX, blockY + 1, z + blockZ, BlockID.RED_FLOWER)
-                                else
-                                    SetLateBlock(x + blockX, blockY + 1, z + blockZ, BlockID.YELLOW_FLOWER);
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                    case 15: // trees
-                        blocks[x + blockX][blockY][z + blockZ] = BlockID.GRASS;
-                        if (x % 5 == 2 && z % 5 == 2)
-                            SetLateTree(x + blockX, blockY, z + blockZ, false);
-                        break;
-                    case 16: // pumpkins
-                        blocks[x + blockX][blockY][z + blockZ] = BlockID.DIRT;
-                        if (x % 5 == 2 && z % 5 == 2) {
-                            blocks[x + blockX][blockY][z + blockZ] = BlockID.LOG;
-                            blocks[x + blockX][blockY + 1][z + blockZ] = BlockID.LEAVES;
-                        }
-                        if (nsOrient) {
-                            if (z % 5 == 2) {
-                                blocks[x + blockX][blockY + 1][z + blockZ] = BlockID.LEAVES;
-
-                                if (OneInTwoChance())
-                                    if (OneInFourChance())
-                                        blocks[x + blockX][blockY + 1][z + blockZ - 1] = BlockID.PUMPKIN
-                                    else
-                                        blocks[x + blockX][blockY + 1][z + blockZ - 1] = BlockID.LEAVES;
-
-                                if (OneInTwoChance())
-                                    if (OneInFourChance())
-                                        blocks[x + blockX][blockY + 1][z + blockZ + 1] = BlockID.PUMPKIN
-                                    else
-                                        blocks[x + blockX][blockY + 1][z + blockZ + 1] = BlockID.LEAVES;
-
-                                if (OneInThreeChance())
-                                    blocks[x + blockX][blockY + 2][z + blockZ] = BlockID.LEAVES;
-                            }
-                        }
-                        else {
-                            if (x % 5 == 2) {
-                                blocks[x + blockX][blockY + 1][z + blockZ] = BlockID.LEAVES;
-
-                                if (OneInTwoChance())
-                                    if (OneInFourChance())
-                                        blocks[x + blockX - 1][blockY + 1][z + blockZ] = BlockID.PUMPKIN
-                                    else
-                                        blocks[x + blockX - 1][blockY + 1][z + blockZ] = BlockID.LEAVES;
-
-                                if (OneInTwoChance())
-                                    if (OneInFourChance())
-                                        blocks[x + blockX + 1][blockY + 1][z + blockZ] = BlockID.PUMPKIN
-                                    else
-                                        blocks[x + blockX + 1][blockY + 1][z + blockZ] = BlockID.LEAVES;
-
-                                if (OneInThreeChance())
-                                    blocks[x + blockX][blockY + 2][z + blockZ] = BlockID.LEAVES;
-                            }
-                        }
-                        break;
-                    case 17:
-                    case 18: // Carrot
-                        if (nsOrient) {
-                            if (z % 4 > 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(141, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 4 > 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(141, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                    case 19:
-                    case 20: // Potato
-                        if (nsOrient) {
-                            if (z % 4 > 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(142, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 4 > 0) {
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                                SetLateBlock(x + blockX, blockY + 1, z + blockZ, EncodeBlock(142, rand.nextInt(5) + 3));
-                            } else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                    default: // unplanted rows
-                        if (nsOrient) {
-                            if (z % 2 == 0)
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                            else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        else {
-                            if (x % 2 == 0)
-                                blocks[x + blockX][blockY][z + blockZ] = EncodeBlock(BlockID.SOIL, 8);
-                            else
-                                blocks[x + blockX][blockY][z + blockZ] = BlockID.WATER;
-                        }
-                        break;
-                }
-    }
 }
 
 function AddParkingLot() {
@@ -2643,11 +2163,6 @@ function AddParkingLot() {
             }
         }
     }
-}
-
-function AddJustStreets() {
-    // let see if we can literally do nothing... 
-    // ...hey it worked!
 }
 
 function AddManholes() {
