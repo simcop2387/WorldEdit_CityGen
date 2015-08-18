@@ -9,6 +9,8 @@ function AddPlumbingLevel() {
     w = Math.floor(arrayWidth / 2);
     d = Math.floor(arrayDepth / 2);
 
+    player.print("w " + w + " d " + d);
+    
     var stack = [];
     var visited = {};
     var noWallLeft = new Array(w * d);
