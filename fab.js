@@ -141,7 +141,7 @@ function importJScript(jScript, dir, globalObj, strBool) {
 				}
 				var fileSize = file.length();                     
 				var buffer = new java.io.FileReader(file);
-				cx.evaluateReader(newScope, buffer, "YourScriptIdentifier" + file.getName(), 1, null);
+				cx.evaluateReader(newScope, buffer, dir+"/"+jScript[inc], 1, null);
 				buffer.close();
 				info[0]++;
 				info[1]+= fileSize;
